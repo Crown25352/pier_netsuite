@@ -22,7 +22,7 @@ define(['N/search', 'N/record', 'N/format', 'N/url', 'N/ui/dialog', 'N/currentRe
                 const lineCount = rec.getLineCount('item');
                 for (let i = 0; i < lineCount; i++) {
                     rec.selectLine('item', i);
-                    rec.setCurrentSublistValue('item', 'custcol_reasoncode_line', reasonCode);
+                    rec.setCurrentSublistValue('item', 'custcol_custcol_reasoncode_line', reasonCode);
                     rec.commitLine('item');
                 }
             }
@@ -37,7 +37,7 @@ define(['N/search', 'N/record', 'N/format', 'N/url', 'N/ui/dialog', 'N/currentRe
             const rec = currentRecord.get();
             const reasonCode = rec.getValue('custbody_reasoncode_header')
             if (reasonCode) {
-                rec.setCurrentSublistValue('item', 'custcol_reasoncode_line', reasonCode);
+                rec.setCurrentSublistValue('item', 'custcol_custcol_reasoncode_line', reasonCode);
             }
         } catch (e) {
             log.debug('error: lineinit', e.message)

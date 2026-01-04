@@ -55,7 +55,7 @@ define(['N/record', 'N/format', 'N/log'], function (record, format, log) {
                         default:
                             lateBucket = 4;
                     }
-                    newRecord.setSublistValue('item', 'custcol_late_days_bucket', i, lateBucket)
+                    newRecord.setSublistValue('item', 'custcol_latebucket', i, lateBucket)
                 }
             }
             
