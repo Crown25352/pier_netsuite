@@ -17,26 +17,18 @@
 
 define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/search'],
   	function(file, render, record, runtime, ui, search) {
-		const BAL_LOC = 1, EASTLOC = 14, ICE_TYPE = 3;
 		var Helper = {};
 		Helper.showList = function(context, params, form) {
 			var from = params.custpage_from;
 			var to = params.custpage_to;
+			var location = params.custpage_location;
+			var reasoncode = params.custpage_reasoncode;
+			var department = params.custpage_department;
 
-			// var searchResults = search.create({
-			// 	type: 'itemfulfillment',
-			// 	filters: [
-			// 		['location', 'anyof', [BAL_LOC, EASTLOC]],
-			// 		'and', ['account', 'is', 212],
-			// 		'and', ['mainline', 'is', false]
-			// 	],
-			// 	columns: ['trandate', 'entity', 'item', 'location', 'custcol_item_ship_type', search.createColumn({
-			// 		name: 'tranid',
-			// 		sort: search.Sort.ASC
-			// 	})]
-			// });
+			log.debug('reasoncode', reasoncode)
+			
 			var searchResults = search.load({
-				id: 'customsearch2975'
+				id: 'customsearch2180'
 			})
 
 			if (from) {
@@ -52,6 +44,30 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					name: 'trandate',
 					operator: search.Operator.ONORBEFORE,
 					values: [to]
+				}));
+			}
+
+			if (location) {
+				searchResults.filters.push(search.createFilter({
+					name: 'location',
+					operator: 'anyof',
+					values: [location]
+				}));
+			}
+
+			if (department) {
+				searchResults.filters.push(search.createFilter({
+					name: 'department',
+					operator: 'anyof',
+					values: [department]
+				}));
+			}
+
+			if (reasoncode) {
+				searchResults.filters.push(search.createFilter({
+					name: 'custcol_reasoncode_line',
+					operator: 'anyof',
+					values: [reasoncode]
 				}));
 			}
 
@@ -71,11 +87,19 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					if (result.getValue(columns[6]) > 1000) break;
 
 					results.push({
-						trandate: result.getValue(columns[0]),
-						tranid: result.getValue(columns[1]),
-						entity: result.getValue(columns[2]),
-						item: result.getValue(columns[3]),
-						location: result.getValue(columns[5])
+						id: result.id,
+						docnum: result.getValue(columns[0]) ? result.getValue(columns[0]) : ' ',
+						lineid: result.getValue(columns[1]) ? result.getValue(columns[1]) : ' ',
+						trandate: result.getValue(columns[2]) ? result.getValue(columns[2]) : ' ',
+						item: result.getValue(columns[3]) ? result.getValue(columns[3]) : ' ',
+						itemdes: result.getValue(columns[4]) ? result.getValue(columns[4]) : ' ',
+						latedays: result.getValue(columns[5]) ? result.getValue(columns[5]) : ' ',
+						commitdate: result.getValue(columns[6]) ? result.getValue(columns[6]) : ' ',
+						shipdate: result.getValue(columns[7]) ? result.getValue(columns[7]) : ' ',
+						latebucket: result.getValue(columns[8]) ? result.getText(columns[8]) : ' ',
+						location: result.getValue(columns[9]) ? result.getText(columns[9]) : ' ',
+						reasoncode: result.getValue(columns[10]) ? result.getText(columns[10]) : ' ',
+						department: result.getValue(columns[11]) ? result.getText(columns[11]) : ' '
 					})
 					/*
 					var trandate = result.getValue('trandate');
@@ -139,19 +163,14 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 			});
 
 			sublistResult.addField({
-				id: 'custpage_trandate', 
-				type: 'text', 
-				label: 'Date Created'
-			});
-			sublistResult.addField({
-				id: 'custpage_tranid', 
+				id: 'custpage_docnum', 
 				type: 'text', 
 				label: 'Document Number'
 			});
 			sublistResult.addField({
-				id: 'custpage_entity', 
+				id: 'custpage_trandate', 
 				type: 'text', 
-				label: 'Name'
+				label: 'Date'
 			});
 			sublistResult.addField({
 				id: 'custpage_item', 
@@ -159,9 +178,29 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 				label: 'Item'
 			});
 			sublistResult.addField({
+				id: 'custpage_latedays', 
+				type: 'text', 
+				label: 'Late Days'
+			});
+			sublistResult.addField({
+				id: 'custpage_latebucket', 
+				type: 'text', 
+				label: 'Late Days Bucket'
+			});
+			sublistResult.addField({
 				id: 'custpage_location', 
 				type: 'text', 
 				label: 'Location'
+			});
+			sublistResult.addField({
+				id: 'custpage_reasoncode', 
+				type: 'text', 
+				label: 'Reason Code'
+			});
+			sublistResult.addField({
+				id: 'custpage_department', 
+				type: 'text', 
+				label: 'Department'
 			});
 
 			for (var line = 0; line < results.length; line++) {
@@ -171,24 +210,47 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					value: results[line].trandate
 				});
 				sublistResult.setSublistValue({
-					id: 'custpage_tranid', 
+					id: 'custpage_docnum', 
 					line: line, 
-					value: results[line].tranid
-				});
-				sublistResult.setSublistValue({
-					id: 'custpage_entity', 
-					line: line, 
-					value: results[line].entity
+					value: results[line].docnum
 				});
 				sublistResult.setSublistValue({
 					id: 'custpage_item', 
 					line: line, 
-					value: results[line].item
+					value: results[line].item + ' ' + results[line].itemdes
+				});
+				sublistResult.setSublistValue({
+					id: 'custpage_latedays', 
+					line: line, 
+					value: results[line].latedays
+				});
+				sublistResult.setSublistValue({
+					id: 'custpage_latebucket', 
+					line: line, 
+					source: "customlist_late_days_buckets",
+          			label: "Late Days Bucket", 
+					value: results[line].latebucket
 				});
 				sublistResult.setSublistValue({
 					id: 'custpage_location', 
 					line: line, 
+					source: "location",
+          			label: "Location", 
 					value: results[line].location
+				});
+				sublistResult.setSublistValue({
+					id: 'custpage_reasoncode', 
+					line: line, 
+					source: "customrecord_reason_code",
+          			label: "Reason Code", 
+					value: results[line].reasoncode
+				});
+				sublistResult.setSublistValue({
+					id: 'custpage_department', 
+					line: line, 
+					source: "department",
+          			label: "Department",
+					value: results[line].department
 				});
 			}
 
@@ -212,19 +274,39 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 						label: 'Date From',
 						container: 'custpage_formdata'
 					});
+					var location = form.addField({
+						id: 'custpage_location',
+						type: ui.FieldType.SELECT,
+						label: 'location',
+						source: 'Location',
+						container: 'custpage_formdata'
+					});
+					var department = form.addField({
+						id: 'custpage_department',
+						type: ui.FieldType.SELECT,
+						source: 'department',
+						label: 'Department',
+						container: 'custpage_formdata'
+					});
 					var to = form.addField({
 						id: 'custpage_to',
 						type: ui.FieldType.DATE,
 						label: 'Date To',
 						container: 'custpage_formdata'
 					});
-
+					var reasonCode = form.addField({
+						id: 'custpage_reasoncode',
+						type: ui.FieldType.SELECT,
+						source: 'customrecord_reason_code',
+						label: 'Reason Code',
+						container: 'custpage_formdata'
+					});
 					context.response.writePage(form);
 				}
 				if (context.request.method === "POST") {
 					var params = context.request.parameters;
 					var form = ui.createForm({
-						title: 'Predict Shipments'
+						title: 'Late Orders Analysis'
 					});
 					form.addSubmitButton({label: 'Submit'});
 					var fieldgroup = form.addFieldGroup({
@@ -240,6 +322,24 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					});
 					from.defaultValue = params.custpage_from;
 
+					var location = form.addField({
+						id: 'custpage_location',
+						type: ui.FieldType.SELECT,
+						label: 'Location',
+						source: 'location',
+						container: 'custpage_formdata'
+					});
+					location.defaultValue = params.custpage_location;
+
+					var department = form.addField({
+						id: 'custpage_department',
+						type: ui.FieldType.SELECT,
+						label: 'Department',
+						source: 'department',
+						container: 'custpage_formdata'
+					});
+					department.defaultValue = params.custpage_department;
+
 					var to = form.addField({
 						id: 'custpage_to',
 						type: ui.FieldType.DATE,
@@ -248,6 +348,15 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					});
 					to.defaultValue = params.custpage_to;
 
+					var reasonCode = form.addField({
+						id: 'custpage_reasoncode',
+						type: ui.FieldType.SELECT,
+						label: 'Reason Code',
+						source: 'customrecord_reason_code',
+						container: 'custpage_formdata'
+					});
+					reasonCode.defaultValue = params.custpage_reasoncode;
+					
 					Helper.showList(context, params, form);
 				}
 				
