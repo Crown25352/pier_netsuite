@@ -20,7 +20,7 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 		var Helper = {};
 		Helper.showList = function(context, form) {
 			var searchResults = search.load({
-				id: 'customsearch2056'
+				id: 'customsearch2187'
 			})
 
 			var results = {}, tmp = [];
@@ -36,24 +36,24 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					var itemNumber = result.getValue(columns[0]);
 					var itemDes = result.getValue(columns[1]);
 					var itemType = result.getValue(columns[2]);
-					var onHandQty = result.getValue(columns[3]);
-					var onSoQty = result.getValue(columns[4]);
-					var onPoQty = result.getValue(columns[5]);
+					var onHandQty = (result.getValue(columns[3]) * 1).toFixed(2);
+					var onSoQty = (result.getValue(columns[4]) * 1).toFixed(2);
+					var onPoQty = (result.getValue(columns[5]) * 1).toFixed(2);
 					var docNumber = result.getValue(columns[6]);
 					var amount = result.getValue(columns[7]);
 					var date = result.getValue(columns[8]);
 					var type = result.getValue(columns[9]);
 					var vendor = result.getValue(columns[10]);
-					var sales3mo = result.getValue(columns[11]);
-					var salesLastmo = result.getValue(columns[12]);
-					var mtd = result.getValue(columns[13]);
-					var avg3 = result.getValue(columns[14]);
-					var avg12 = result.getValue(columns[15]);
+					var sales3mo = (result.getValue(columns[11]) * 1).toFixed(2);
+					var salesLastmo = (result.getValue(columns[12]) * 1).toFixed(2);
+					var mtd = (result.getValue(columns[13]) * 1).toFixed(2);
+					var avg3 = (result.getValue(columns[14]) * 1 / 3).toFixed(2);
+					var avg12 = (result.getValue(columns[15]) * 1).toFixed(2);
 
 					if (!results[itemNumber]) {
 						results[itemNumber] = {
 							itemNumber: itemNumber,
-							onHandQty: 0,
+							onHandQty: '0',
 							onSoQty: 0,
 							onPoQty: 0,
 							sales3mo: 0,
@@ -70,18 +70,19 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 					
 					if (type == 'SalesOrd') {
 						results[itemNumber].onHandQty = onHandQty;
-						results[itemNumber].onSoQty = onSoQty;
+						results[itemNumber].onSoQty += (onSoQty * 1);
 						results[itemNumber].onPoQty = onPoQty;
-						results[itemNumber].sales3mo = sales3mo;
-						results[itemNumber].salesLastmo = salesLastmo;
-						results[itemNumber].mtd = mtd;
-						results[itemNumber].avg3 = avg3;
+						results[itemNumber].sales3mo += (sales3mo * 1);
+						results[itemNumber].salesLastmo += (salesLastmo * 1);
+						results[itemNumber].mtd += (mtd * 1);
+						results[itemNumber].avg3 += (avg3 * 1);
 						results[itemNumber].avgCost = 0;
-						results[itemNumber].avg12 = avg12;
+						results[itemNumber].avg12 += (avg12 * 1);
 					} else {
 						results[itemNumber].lastVendor = vendor;
 						results[itemNumber].lastPo = docNumber;
 					}
+
 				}
 			}
 
@@ -166,7 +167,7 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 			sublistResult.addField({
 				id: 'custpage_12_avg', 
 				type: 'text', 
-				label: '12 Month Average'
+				label: '12 Month Avg Qty'
 			});
 
 			var map = [];
@@ -180,7 +181,7 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 				sublistResult.setSublistValue({
 					id: 'custpage_item', 
 					line: line, 
-					value: map[line].itemNumber || ''
+					value: map[line].itemNumber || ' '
 				});
 
 				sublistResult.setSublistValue({
@@ -222,7 +223,7 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 				sublistResult.setSublistValue({
 					id: 'custpage_3_avg', 
 					line: line, 
-					value: map[line].avg3 || '0'
+					value: (map[line].avg3 * 1).toFixed(2) || '0'
 				});
 
 				sublistResult.setSublistValue({
@@ -246,7 +247,7 @@ define(['N/file', 'N/render', 'N/record', 'N/runtime', 'N/ui/serverWidget', 'N/s
 				sublistResult.setSublistValue({
 					id: 'custpage_12_avg', 
 					line: line, 
-					value: map[line].avg12 || '0'
+					value: (map[line].avg12 * 1 / 12).toFixed(2) || '0'
 				});
 			}
 
