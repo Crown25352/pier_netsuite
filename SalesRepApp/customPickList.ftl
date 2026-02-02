@@ -141,50 +141,63 @@
 	</table>
 	</th>
 	<th colspan="8" align="center">Description</th>
-	<th colspan="4" align="center">Order Qty</th>
-	<th colspan="4" align="center">Ship Qty</th>
-	<th colspan="4" align="center">Left Qty</th>
+	<th colspan="4" align="center">Avail Qty</th>
+	<th colspan="4" align="center">Ordered</th>
+	<th colspan="4" align="center">Fulfill Qty</th>
 	</tr>
 </thead>
-<#list record.item as tranline><tr>
-	<td colspan="2">${tranline?counter}</td>
-	<#assign itemName = tranline.item?keep_before(" ")>
-	<#assign invdetailsJSON = record.custpage_iteminvdetails>
-	<#if invdetailsJSON?has_content>
-	<#assign invdetailsJSON = record.custpage_iteminvdetails?eval>
-	<#if invdetailsJSON[itemName]?has_content> 
-		<td colspan="11" align="left"><span class="itemname">${itemName}<br/>
-		<table class="itemtable" style="width: 100%; margin-top: 10px;">
-		<#list invdetailsJSON[itemName]?split("|") as itemInvArr>
-		<#if itemInvArr?has_content>
-			<#assign itemInvDetailArr = itemInvArr?split(",")>
-			<tr>
-			<#if itemInvDetailArr[0]?has_content>
-				<td style='width:50%;'>${itemInvDetailArr[0]}</td>
-			<#else>
-				<td style='width:50%;'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<#assign pickInfo = pick.selectedLineQty />
+<#assign realCounter = 0 />
+
+<#list record.item as tranline>
+	<#assign lineNum = tranline.line?number />
+	
+	<#if pickInfo[lineNum]?has_content && pickInfo[lineNum] != 'null'>
+		<#assign fulfillQty = pickInfo[lineNum]?number />
+		<#assign orderQty = tranline.quantity?string('0')?number />
+		<#assign availQty = tranline.quantityavailable?string('0')?number />
+		<#assign realCounter = realCounter + 1 />
+		<tr>
+		<td colspan="2">${realCounter}</td>
+		<#assign itemName = tranline.item?keep_before(" ")>
+		<#assign invdetailsJSON = record.custpage_iteminvdetails>
+
+		<#if invdetailsJSON?has_content>
+		<#assign invdetailsJSON = record.custpage_iteminvdetails?eval>
+			<#if invdetailsJSON[itemName]?has_content> 
+				<td colspan="11" align="left"><span class="itemname">${itemName}<br/>
+				<table class="itemtable" style="width: 100%; margin-top: 10px;">
+				<#list invdetailsJSON[itemName]?split("|") as itemInvArr>
+				<#if itemInvArr?has_content>
+					<#assign itemInvDetailArr = itemInvArr?split(",")>
+					<tr>
+					<#if itemInvDetailArr[0]?has_content>
+						<td style='width:50%;'>${itemInvDetailArr[0]}</td>
+					<#else>
+						<td style='width:50%;'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+					</#if>
+					
+						<td style='width:25%;'>${itemInvDetailArr[1]}</td>
+						<td style='width:25%;'>${itemInvDetailArr[2]}</td>
+					</tr>
+				</#if>
+				</#list>
+				</table>
+				</span>
+			<#else> 
+				<td colspan="11" align="left"><span class="itemname">${itemName}</span>
 			</#if>
-			
-				<td style='width:25%;'>${itemInvDetailArr[1]}</td>
-				<td style='width:25%;'>${itemInvDetailArr[2]}</td>
-			</tr>
-		</#if>
-		</#list>
-		</table>
-		</span>
-	<#else> 
+		<#else> 
 		<td colspan="11" align="left"><span class="itemname">${itemName}</span>
+		</#if>
+		</td>
+		<td colspan="8" align="center">${tranline.description}</td>
+		<td colspan="4" align="center">${availQty}</td>
+		<td colspan="4" align="center">${orderQty}</td>
+		<td colspan="4" align="center">${fulfillQty}</td>
+		</tr>
 	</#if>
-	<#else> 
-	<td colspan="11" align="left"><span class="itemname">${itemName}</span>
-	</#if>
-</td>
-	<td colspan="8" align="center">${tranline.description}</td>
-	<td colspan="4" align="center">${tranline.quantity}</td>
-	<td colspan="4" align="center">${tranline.quantitypickpackship}</td>
-	<td colspan="4" align="center">${(tranline.quantity?string('0')?number - tranline.quantitypickpackship?string('0')?number)}</td>
-	</tr>
-	</#list></table>
+</#list></table>
 </#if>
 </body>
 </pdf>

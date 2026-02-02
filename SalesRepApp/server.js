@@ -82,7 +82,8 @@ define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime'
                         var item = result.getText(columns[1]);
                         var itemDes = result.getValue(columns[2]);
                         var expShipDate = result.getValue(columns[3]) ? result.getValue(columns[3]) : ' ';
-                        var qty = result.getValue(columns[4]) ? result.getValue(columns[4]) : 0;
+                        var qty = result.getValue(columns[9]) ? result.getValue(columns[9]) : 0;
+                        var availQty = result.getValue(columns[10]) ? result.getValue(columns[10]) : 0;
                         var location = result.getText(columns[5]) ? result.getText(columns[5]) : ' ';
                         var lineId = result.getValue(columns[8]) ? result.getValue(columns[8]) : ' ';
                         
@@ -94,6 +95,7 @@ define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime'
                             itemDes: itemDes,
                             expShipDate: expShipDate,
                             qty: qty,
+                            availQty: availQty,
                             location: location
                         })
 
@@ -111,7 +113,6 @@ define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime'
 
                 if (exportPackList) {
                     var soIds = JSON.parse(params.so);
-                    log.debug('so', soIds);
                     var res = context.response;
                     
                     const TEMPLATE_FILE_ID = 795668;
@@ -129,10 +130,8 @@ define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime'
                         var lines = [];
                         for (var j = 0; j < lineIds.length; j++) {
                             var lineId = lineIds[j];
-                            lines.push({
-                                lineId: lineId,
-                                qty: Number(linesMap[lineId] || 0)
-                            });
+
+                            lines[lineId] = Number(linesMap[lineId] || 0);
                         }
 
                         // Call your picking list routine (you said other part is OK)
@@ -169,11 +168,12 @@ define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime'
                 templateName: 'record',
                 record: soRec
             });
-            // renderer.addCustomDataSource({
-            //     format: render.DataSource.OBJECT,
-            //     alias: "custom",
-            //     data: {personalMsg: arrPersonalMsg}
-            // });
+            log.debug('line', lines)
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: "pick",
+                data: {selectedLineQty: lines}
+            });
     
             // stContent = stContent.replace('{{total_weight}}', totalWeight)
             //             .replace('{{gift_msg}}', stGiftMsg)

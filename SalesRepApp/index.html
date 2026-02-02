@@ -103,7 +103,8 @@
                         <th scope="col">Item</th>
                         <th scope="col">Item Description</th>
                         <th scope="col">Expected Ship Date</th>
-                        <th scope="col">Quantity</th>
+                        <th scope="col">Avail Qty</th>
+                        <th scope="col">Qty in Order</th>
                         <th scope="col">Location</th>
                         <th scope="col">Fulfill Qty</th>
                     </thead>
@@ -418,6 +419,7 @@
                         tbody += "<td>" + ifRec.item + "</td>";
                         tbody += "<td>" + ifRec.itemDes + "</td>";
                         tbody += "<td>" + ifRec.expShipDate + "</td>";
+                        tbody += "<td>" + ifRec.availQty + "</td>";
                         tbody += "<td>" + ifRec.qty + "</td>";
                         tbody += "<td>" + ifRec.location + "</td>";
                         tbody += "<td><input type='text' name='fulfill-qty' value='" + ifRec.qty + "' style='width:50px;'></td>";
