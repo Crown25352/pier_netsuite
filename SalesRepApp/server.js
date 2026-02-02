@@ -1,10 +1,11 @@
 /**
 * @NApiVersion 2.x
 * @NScriptType Suitelet
+* @Desc IF Summary Dash
 */
 
-define(['N/https', 'N/record', 'N/email', 'N/search', 'N/task', 'N/runtime', 'N/url', 'N/format'],
-    function callbackFunction(https, record, email, search, task, runtime, url, format) {
+define(['N/https', 'N/record', 'N/render', 'N/search', 'N/compress', 'N/runtime', 'N/url', 'N/file'],
+    function callbackFunction(https, record, render, search, compress, runtime, url, file) {
         const GIFT_CERTS = ["Gift Card ($25)", "Gift Card ($50)", "Gift Card ($75)", "Gift Card ($100)", "Gift Card ($150)", "Gift Card ($200)", "Gift Card (Any Amount)"];
         const LOCS = {
             'Baltimore': 1,
@@ -34,168 +35,22 @@ define(['N/https', 'N/record', 'N/email', 'N/search', 'N/task', 'N/runtime', 'N/
         function postFunction(context) {
             try {
                 var params = context.request.parameters;
-                var getOOHs = params.getOOHs;
-                var getBackOrders = params.getBackOrders;
-                var getBackSales = params.getBackSales;
-                var getBlankUsers = params.getBlankUsers;
-                var updateAddress = params.updateAddress;
                 var getIFRecords = params.getIFRecords;
-                var createIFRecords = params.createIFRecords;
-                var soid = params.soid;
-                var getIFTracking = params.getIFTracking;
-                var getAvgUnits = params.getAvgUnits;
-                var getAvgShipped = params.getAvgShipped;
-                var getOrders = params.getOrders;
-                var getGiftLists = params.getGiftLists;
-                var getItemInfo = params.getItemInfo;
-                var getAccruedPO = params.getAccruedPO;
-                var getLess20 = params.getLess20;
-                var getOPOrders = params.getOPOrders;
-                var getShippingItems = params.getShippingItems;
                 var exportPackList = params.exportPackList;
-
-                if (getShippingItems) {
-                    var res = [];
-                    search.create({
-                        type: 'shipitem',
-                        filters: [
-                            ['isinactive', 'is', false]
-                        ],
-                        columns: ['itemid']
-                    }).run().each(function(result) {
-                        res.push({
-                            id: result.id,
-                            value: result.getValue('itemid')
-                        });
-                        return true;
-                    });
-
-                    context.response.write(JSON.stringify(res));
-                }
-
-                if (exportPackList) {
-                    var soIds = JSON.parse(params.so);
-                    var res = {};
-
-                    var searchResults = search.create({
-                        type: 'salesorder',
-                        filters: [
-                            ['internalid', 'anyof', soIds],
-                            'and', ['mainline', 'is', false],
-                            'and', ['shipping', 'is', false],
-                            'and', ['taxline', 'is', false]
-                        ],
-                        // columns: ['item', 'quantity', 'item.memberitem', 'item.memberquantity', 'tranid', 'itemtype']
-                        columns: ['item', 'quantity', 'tranid', 'itemtype']
-                    })
-
-                    var pagedData = searchResults.runPaged({pageSize : 1000});
-                    for (var i = 0; i < pagedData.pageRanges.length; i++) {
-                        var currentPage = pagedData.fetch(i);
-                        currentPage.data.forEach(function(result) {
-                            if (result.getValue('itemtype') != 'Discount') {
-                                var item = result.getText('item');
-                                if (typeof res[item] == 'undefined') {
-                                    res[item] = Number(result.getValue('quantity'));
-                                } else {
-                                    res[item] += Number(result.getValue('quantity'));
-                                }
-                            }
-                        })
-                    }
-
-                    var result = [];
-                    for (item in res) {
-                        result.push({
-                            item: item,
-                            qty: res[item]
-                        })
-                    }
-                    context.response.write(JSON.stringify(result));
-                }
-
-                if (createIFRecords) {
-                    var shipstatus = params.shipstatus; 
-                    var shipdate = params.shipdate;
-                    var shipmethod = params.shipmethod;
-                    var warehouse = params.warehouse;
-                    var so = params.so;
-                    var shipgroup = params.shipgroup;
-
-                    if (warehouse == "Baltimore") {
-                        warehouse = 1;
-                    } else if (warehouse == 'Neesvigs') {
-                        warehouse = 2;
-                    } else if (warehouse == 'CA Bakery') {
-                        warehouse = 12;
-                    } else if (warehouse == 'RealCold - West') {
-                        warehouse = 18;
-                    } else if (warehouse == 'RealCold - East') {
-                        warehouse = 19;
-                    }
-
-                    // Run Map/Reduce Script
-                    var mrScript = task.create({taskType: task.TaskType.MAP_REDUCE});
-                    mrScript.scriptId = 'customscript_mr_create_item_fulfillment';
-                    mrScript.deploymentId = 'customdeploy_mr_create_item_fulfillment';
-                    mrScript.params = {
-                        custscript_sales_order: so, 
-                        custscript_shipgroup: shipgroup,
-                        custscript_shipstatus: shipstatus, 
-                        custscript_shipdate: shipdate,
-                        custscript_shipmethod: shipmethod,
-                        custscript_warehouse: warehouse
-                    };
-                    
-                    mrScript.submit();
-
-                    return;
-                }
 
                 if (getIFRecords) {
                     var shipdatefrom = params.shipdatefrom;
                     var shipdateto = params.shipdateto;
-                    var shiptype = params.shiptype;
 
-                    var salesOrders = [];
-                    var prior;
-                    var priorItemCnt = 0;
-                    var backOrder = true;
-                    var fulfilledFg = false;
-                    var obj = {};
-
-                    var schId1 = "customsearch_restrict_item_fulfillment";
-                    var schId2 = "customsearch_restrict_item_fulfillment_2";
-                    var schId3 = "customsearch_restrict_item_fulfillment_3";
-
-                    if (ignorelabels == "true") {
-                        schId1 = "customsearch_restrict_if_temp1";
-                        schId2 = "customsearch_restrict_if_temp2";
-                    }
+                    var schId1 = "customsearch_so_srch_if";
 
                     var searchResults = search.load({
                         id: schId1
                     })
                     
-                    // if (warehouse) {
-                    //     searchResults.filters.push(search.createFilter({
-                    //         name: 'location',
-                    //         operator: search.Operator.IS,
-                    //         values: [LOCS[warehouse]]
-                    //     }));
-                    // }
-
-                    if (shipmethod && shipmethod != 0 && ignorelabels == "false") {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custcol_cwgp_bestshipping',
-                            operator: search.Operator.IS,
-                            values: [shipmethod]
-                        }));
-                    }
-
                     if (shipdatefrom) {
                         searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
+                            name: 'custbody_nacs_so_exp_ship_date',
                             operator: search.Operator.ONORAFTER,
                             values: [shipdatefrom]
                         }));
@@ -203,313 +58,46 @@ define(['N/https', 'N/record', 'N/email', 'N/search', 'N/task', 'N/runtime', 'N/
 
                     if (shipdateto) {
                         searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
+                            name: 'custbody_nacs_so_exp_ship_date',
                             operator: search.Operator.ONORBEFORE,
                             values: [shipdateto]
                         }));
                     }
-                    
-                    // if (orderform > 0) {
-                    //     searchResults.filters.push(search.createFilter({
-                    //         name: 'customform',
-                    //         operator: search.Operator.IS,
-                    //         values: [orderform]
-                    //     }));
-                    // }
+                    var data = [];
+
                     var resultSet = searchResults.run();
 
                     var currentRange = resultSet.getRange({
                         start : 0,
                         end : 1000
                     });
-                    
                     var i = 0;  // iterator for all search results
                     var j = 0;  // iterator for current result range 0..999
-                    var results = [];
-                    while (j < currentRange.length) {
-                        results.push(currentRange[j]);
-                        i++; j++;
-                        if (j == 1000) {   // check if it reaches 1000
-                            j = 0;          // reset j an reload the next portion
-                            currentRange = resultSet.getRange({
-                                start : i,
-                                end : i + 1000
-                            });
-                        }
-                    }
-                    
-                    var resultLast = currentRange[0];
 
-                    // add another filter creteria
-                    searchResults = search.load({
-                        id: schId2
-                    });
-
-                    // if (warehouse) {
-                    //     searchResults.filters.push(search.createFilter({
-                    //         name: 'location',
-                    //         operator: search.Operator.IS,
-                    //         values: [LOCS[warehouse]]
-                    //     }));
-                    // }
-
-                    if (shipmethod && shipmethod != 0 && ignorelabels == "false") {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custcol_cwgp_bestshipping',
-                            operator: search.Operator.IS,
-                            values: [shipmethod]
-                        }));
-                    }
-
-                    if (shipdatefrom) {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
-                            operator: search.Operator.ONORAFTER,
-                            values: [shipdatefrom]
-                        }));
-                    }
-
-                    if (shipdateto) {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
-                            operator: search.Operator.ONORBEFORE,
-                            values: [shipdateto]
-                        }));
-                    }
-                    
-                    resultSet = searchResults.run();
-                    currentRange = resultSet.getRange({
-                        start : 0,
-                        end : 1000
-                    });
-                    var i = 0;  // iterator for all search results
-                    var j = 0;  // iterator for current result range 0..999
-                    while (j < currentRange.length) {
-                        results.push(currentRange[j]);
-                        i++; j++;
-                        if (j == 1000) {   // check if it reaches 1000
-                            j = 0;          // reset j an reload the next portion
-                            currentRange = resultSet.getRange({
-                                start : i,
-                                end : i + 1000
-                            });
-                        }
-                    }
-
-                    if (results.length != 0) {
-                        results.push(resultLast);
-                    }
-                    
-
-                    var itemShipType = '';
-                    results.forEach(function(result, idx) {
-                        var columns = result.columns;
-                        var flag = false;
-                        var currId = result.getValue(columns[0]);
-
-                        if (idx == results.length - 1) {
-                            currId = "Fake: To get the real last info";
-                        }
-
-                        if (prior != currId) {
-                            prior = currId;
-                            
-                            if (!backOrder && !fulfilledFg && obj.so !== undefined && obj.isBestShipping) {
-                                if ((orderform == SINGLE_FORM && priorItemCnt == 1) || (orderform == MULTI_FORM && priorItemCnt > 1) || (orderform == 0)) { // Ashley asked to change this shipment filter to find the order with single or multiple items instead of form 11/7/2023
-                                    if (obj.location.length > 0) {
-                                        if (itemShipType.indexOf('Ice') != -1) {
-                                            obj.shiptype = 'Ice';
-                                        } else if (itemShipType.indexOf('Gel') != -1) {
-                                            obj.shiptype = 'Gel';
-                                        } else if (itemShipType.indexOf('Dry') != -1) {
-                                            obj.shiptype = 'Dry';
-                                        }
-    
-                                        if (shiptype == 'All' || obj.shiptype == shiptype) {
-                                            if (giftcert == "false") {
-                                                salesOrders.push(obj);   
-                                            } else {
-                                                if (obj.gcFlag) {
-                                                    salesOrders.push(obj);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            priorItemCnt = 0;
-                            obj = {};
-                            obj.location = [];
-                            backOrder = false;
-                            fulfilledFg = false;
-    
-                            obj.so = result.getValue(columns[0]);
-                            obj.soid = result.getValue(columns[7]);
-                            obj.customer = result.getText(columns[1]);
-                            obj.amount = result.getValue(columns[4]);
-                            obj.shippingMethod = result.getText(columns[16]);
-                            obj.shippingZipTo = result.getValue(columns[18]);
-                            obj.shippingState = result.getValue(columns[19]);
-                            obj.holdDate = result.getValue(columns[6]);
-                            obj.brand = result.getText(columns[11]);
-                            obj.shiptype = '';
-                            obj.orderform = result.getValue(columns[15]);
-                            obj.gcFlag = true;
-                            obj.isBestShipping = true;
-                            itemShipType = '';
-                            
-                            if (obj.orderform == MULTI_FORM) {
-                                obj.shipgroup = 2;
-                            } else {
-                                obj.shipgroup = 1;
-                            }
-                        }
-
-                        // if (obj.orderform != MULTI_FORM && result.getValue(columns[5]) > 0) {
-                        if (result.getValue(columns[5]) > 0) {
-                            backOrder = true;
-                        }
-
-                        if (obj.orderform != MULTI_FORM && result.getValue(columns[5]) == 0) {
-                            obj.location.push(result.getValue(columns[3]));        
-                        }
-
-                        if (obj.orderform == MULTI_FORM) {
-                            obj.location.push(result.getValue(columns[3]));        
-                        }
-
-                        if (!result.getValue(columns[16])) {
-                            obj.isBestShipping = false;
-                        }
-
-                        if (result.getValue(columns[8]) == "Item Fulfillment") {
-                            fulfilledFg = true;
-                        }
-                        
-                        if (giftcert == "true" && obj.gcFlag) {
-                            if (GIFT_CERTS.indexOf(result.getText(columns[14])) == -1) {
-                                obj.gcFlag = false;
-                            }
-                        }
-
-                        itemShipType += result.getText(columns[12]);
-                        priorItemCnt ++;
-                    });
-
-                    // add check/invoice filter creteria
-                    /*searchResults = search.load({
-                        id: schId3
-                    });
-
-                    if (brand && brand != 0) {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'department',
-                            operator: search.Operator.IS,
-                            values: [brand]
-                        }));
-                    }
-
-                    if (shipmethod && shipmethod != 0 && ignorelabels == "false") {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'shipmethod',
-                            operator: search.Operator.IS,
-                            values: [shipmethod]
-                        }));
-                    }
-
-                    if (shiptype == "Dry") {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_ship_type',
-                            operator: search.Operator.IS,
-                            values: ['Dry']
-                        }));
-                    }
-
-                    if (shiptype == "Ice") {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_ship_type',
-                            operator: search.Operator.CONTAINS,
-                            values: ['Ice']
-                        }));
-                    }
-
-                    if (shipdatefrom) {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
-                            operator: search.Operator.ONORAFTER,
-                            values: [shipdatefrom]
-                        }));
-                    }
-
-                    if (shipdateto) {
-                        searchResults.filters.push(search.createFilter({
-                            name: 'custbody_hold_date',
-                            operator: search.Operator.ONORBEFORE,
-                            values: [shipdateto]
-                        }));
-                    }
-                    
-                    resultSet = searchResults.run();
-                    currentRange = resultSet.getRange({
-                        start : 0,
-                        end : 1000
-                    });
-                    
-                    var i = 0;  // iterator for all search results
-                    var j = 0;  // iterator for current result range 0..999
-                    var flag = false;
-                    var backOrder = false;
-                    var prior = "";
-                    var skip = false;
-                    obj = {};
                     while (j < currentRange.length) {
                         var result = currentRange[j];
                         var columns = result.columns;
-                        if ((result.getText(columns[16]) == '5- Check' || result.getText(columns[16]) == '7- Invoice' || result.getText(columns[16]) == '') && result.id != prior) {
-                            if (obj.so !== undefined && !backOrder) {
-                                salesOrders.push(obj);
-                            }
-                            flag = true;
-                            backOrder = false;
-                            skip = false;
-                            prior = result.id;
 
-                            obj = {};
-                            obj.location = [];
+                        var docNum = result.getValue(columns[0]);
+                        var item = result.getText(columns[1]);
+                        var itemDes = result.getValue(columns[2]);
+                        var expShipDate = result.getValue(columns[3]) ? result.getValue(columns[3]) : ' ';
+                        var qty = result.getValue(columns[4]) ? result.getValue(columns[4]) : 0;
+                        var location = result.getText(columns[5]) ? result.getText(columns[5]) : ' ';
+                        var lineId = result.getValue(columns[8]) ? result.getValue(columns[8]) : ' ';
+                        
+                        data.push({
+                            soid: result.id,
+                            docNum: docNum,
+                            lineId: lineId,
+                            item: item,
+                            itemDes: itemDes,
+                            expShipDate: expShipDate,
+                            qty: qty,
+                            location: location
+                        })
 
-                            obj.so = result.getValue(columns[0]);
-                            obj.soid = result.getValue(columns[7]);
-                            obj.customer = result.getText(columns[1]);
-                            obj.amount = result.getValue(columns[4]);
-                            obj.shippingMethod = result.getText(columns[10]);
-                            obj.holdDate = result.getValue(columns[6]);
-                            obj.brand = result.getText(columns[11]);
-                            obj.shiptype = result.getValue(columns[12]);
-                            obj.orderform = result.getValue(columns[15]);
-
-                            if (result.getValue(columns[5]) > 0) {
-                                backOrder = true;
-                            }
-                        } else {
-                            if (result.id == prior) {
-                                if (!skip) {
-                                    if (result.getValue(columns[5]) > 0) {
-                                        backOrder = true;
-                                    }
-                                    if (flag && result.id == prior) {
-                                        obj.location.push(result.getValue(columns[3]));   
-                                    } else {
-                                        flag = false;
-                                    }
-                                }
-                            } else {
-                                skip = true;
-                                prior = result.id;
-                            }
-                        }
-
-                        i++; j++;
+                        i++; j++; 
                         if (j == 1000) {   // check if it reaches 1000
                             j = 0;          // reset j an reload the next portion
                             currentRange = resultSet.getRange({
@@ -517,55 +105,93 @@ define(['N/https', 'N/record', 'N/email', 'N/search', 'N/task', 'N/runtime', 'N/
                                 end : i + 1000
                             });
                         }
-                    } */
-                    
-                    // if (obj.so !== undefined) {
-                    //     salesOrders.push(obj);
-                    // } 
-
-                    result = [];
-                    salesOrders.forEach(function(so) {
-                        if (ignorelabels == "true") {
-                            var flag = false;
-                            if (so.shippingMethod.indexOf("UP2") != -1 || so.shippingMethod.indexOf("UPN") != -1) {
-                                flag = true;
-                            }
-
-                            so.location.forEach(function(loc) {
-                                if (loc == warehouse)
-                                    flag = true;
-                            });
-        
-                            if (flag) {
-                                so.location = warehouse;
-                                result.push(so);
-                            }
-                        } else {
-                            var flag = false;
-                            if (typeof so.location == 'object') {
-                                so.location.forEach(function(loc) {
-                                    if (loc == warehouse)
-                                        flag = true;
-                                });
-                            } else {
-                                if (so.location == warehouse) {
-                                    flag = true;
-                                }
-                            }
-        
-                            if (flag) {
-                                so.location = warehouse;
-                                result.push(so);
-                            }
-                        }
-                    })
-
-                    context.response.write(JSON.stringify(result));
+                    }
+                    context.response.write(JSON.stringify(data));
                 }
 
+                if (exportPackList) {
+                    var soIds = JSON.parse(params.so);
+                    log.debug('so', soIds);
+                    var res = context.response;
+                    
+                    const TEMPLATE_FILE_ID = 795668;
+                    var templateContent = file.load({ id: TEMPLATE_FILE_ID }).getContents();
+                    var zip = compress.createArchiver({ type: compress.Type.ZIP });
+
+                    var soNumbers = Object.keys(soIds).sort(); // stable order
+
+                    for (var i = 0; i < soNumbers.length; i++) {
+                        var soNumber = soNumbers[i];          // e.g. "SO1234"
+                        var linesMap = soIds[soNumber];       // e.g. { "23": 2, "24": 1 }
+
+                        // Build lines array (optional convenience)
+                        var lineIds = Object.keys(linesMap);
+                        var lines = [];
+                        for (var j = 0; j < lineIds.length; j++) {
+                            var lineId = lineIds[j];
+                            lines.push({
+                                lineId: lineId,
+                                qty: Number(linesMap[lineId] || 0)
+                            });
+                        }
+
+                        // Call your picking list routine (you said other part is OK)
+                        var pdfFile = createPickingList(soNumber, lines, templateContent);
+                        pdfFile.name = 'PickingTicket_SO_' + soNumber + '.pdf';
+                        zip.add({ file: pdfFile });
+                    }
+
+                    // Finalize ZIP file
+                    var zipName = 'PickingTickets_' + isoDate() + '.zip';
+                    var zipFile = zip.archive({ name: zipName });
+
+                    // Helpful for browser/AJAX filename
+                    res.addHeader({
+                    name: 'Content-Disposition',
+                    value: 'attachment; filename="' + zipName + '"'
+                    });
+
+                    // Return ZIP as download
+                    res.writeFile(zipFile, true);
+                }
             } catch(e) {
                 log.error("Error", e);
             }
+        }
+
+        function createPickingList(soId, lines, templFile) {
+            var renderer = render.create();
+            var soRec = record.load({
+                type: 'salesorder',
+                id: soId
+            })
+            renderer.addRecord({
+                templateName: 'record',
+                record: soRec
+            });
+            // renderer.addCustomDataSource({
+            //     format: render.DataSource.OBJECT,
+            //     alias: "custom",
+            //     data: {personalMsg: arrPersonalMsg}
+            // });
+    
+            // stContent = stContent.replace('{{total_weight}}', totalWeight)
+            //             .replace('{{gift_msg}}', stGiftMsg)
+            //             .replace('{{has_gift_cert}}', hasGiftCert);
+
+            renderer.templateContent = templFile;
+            return renderer.renderAsPdf();
+        }
+
+        function isoDate() {
+            // YYYY-MM-DD
+            var d = new Date();
+            var yyyy = d.getFullYear();
+            var mm = String(d.getMonth() + 1);
+            var dd = String(d.getDate());
+            if (mm.length < 2) mm = '0' + mm;
+            if (dd.length < 2) dd = '0' + dd;
+            return yyyy + '-' + mm + '-' + dd;
         }
 
         function onRequestFxn(context) {

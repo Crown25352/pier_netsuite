@@ -72,14 +72,14 @@
                         <input class="form-control srch-shipdate-to">
                     </div>
                     
-                    <div class="col-md-3">
-                        <label class="wd100">Shipment Type</label>
+                    <!-- <div class="col-md-3">
+                        <label class="wd100">Location</label>
                         <select class="form-control srch-orderform">
                             <option value="0">All</option>
                             <option value="207">Single</option>
                             <option value="210">Multiple</option>
                         </select>
-                    </div>
+                    </div> -->
                     <div class="col-md-1">
                         <label class="wd100">&nbsp;</label>
                         <input type="button" class="btn btn-dark filter-so" value="Search">
@@ -100,15 +100,12 @@
                     <thead>
                         <th scope="col"><input type="checkbox" name="if-check-all"></th>
                         <th scope="col">Sales Order #</th>
-                        <th scope="col">Customer</th>
+                        <th scope="col">Item</th>
+                        <th scope="col">Item Description</th>
+                        <th scope="col">Expected Ship Date</th>
+                        <th scope="col">Quantity</th>
                         <th scope="col">Location</th>
-                        <th scope="col">Brand</th>
-                        <th scope="col">Amount</th>
-                        <th scope="col">Shipping Method</th>
-                        <th scope="col">Shipping Zip Code</th>
-                        <th scope="col">Shipping State</th>
-                        <th scope="col">Ship Type</th>
-                        <th scope="col">Hold Date</th>
+                        <th scope="col">Fulfill Qty</th>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -157,9 +154,6 @@
         var DAPP = {};
 
         DAPP.url = "/app/site/hosting/scriptlet.nl?script=3667&deploy=1";
-        DAPP.oohs = false;
-        DAPP.backOrders = false;
-        DAPP.backSales = false;
         DAPP.blankUsers = false;
         DAPP.ifRecords = false;
         DAPP.avgRecords = false;
@@ -251,28 +245,28 @@
             $(".bal-export").click(function() {
                 DAPP.ifTable.destroy();
 
-                var so = [];
-
-                var recNumbers = $("input[name=record-numbers]").val();
-                if (recNumbers) {                    
-                    var idx = 0;
-                    $("input[name=if-check]").each(function() {
-                        if (idx < recNumbers) {
-                            $(this).prop("checked", true);
-                            idx ++;
-                        } else {
-                            $(this).prop("checked", false);
-                        }
-                    });
-                }
+                var so = {};
 
                 $("input[name=if-check]").each(function() {
-                    if ($(this).prop("checked")) {
-                        so.push($(this).val());
-                    }
+                    if (!$(this).prop("checked")) return;
+
+                    var raw = String($(this).val()); // e.g. "SO1234-23"
+                    var parts = raw.split("-");
+                    var soNumber = parts[0];                     // "SO1234"
+                    var lineId = parts.slice(1).join("-");       // "23" (safe if extra dashes)
+
+                    var $row = $(this).closest("tr");            // change if not table
+                    var qty = Number($row.find("input[name='fulfill-qty']").val() || 0);
+
+                    // init group
+                    if (!so[soNumber]) so[soNumber] = {};
+
+                    // store qty (overwrite)
+                    so[soNumber][lineId] = qty;
                 })
 
                 DAPP.ifTable = $(".if-list").DataTable();
+                console.log(so)
                 DAPP.exportPackList(so);
             })
 
@@ -398,7 +392,7 @@
             DAPP.exportCSVFile(headers, itemsFormatted, fileTitle); 
         }
    
-        DAPP.getIFRecords = function(shipdatefrom, shipdateto, shiptype) {
+        DAPP.getIFRecords = function(shipdatefrom, shipdateto) {
             $(".ajax-loading").removeClass("hide");
             if (DAPP.ifTable) {
                 DAPP.ifTable.destroy();
@@ -408,7 +402,7 @@
             $.ajax({
                 url: DAPP.url,
                 method: "POST",
-                data: {"getIFRecords": true, "shipdatefrom": shipdatefrom, "shipdateto": shipdateto, "shiptype": shiptype},
+                data: {"getIFRecords": true, "shipdatefrom": shipdatefrom, "shipdateto": shipdateto},
                 success: function(data) {
                     $(".ajax-loading").addClass("hide");
                     $(".if-wrapper").removeClass("hide");
@@ -419,29 +413,67 @@
 
                     DAPP.ifRecords.forEach(function(ifRec) {
                         tbody += "<tr>";
-                        tbody += "<td><input type='checkbox' name='if-check' value='" + ifRec.soid + "'><input type='hidden' name='if-shipgroup' value='" + ifRec.shipgroup + "'></td>";
-                        // tbody += "<td><a target='_blank' href='https://3296489.app.netsuite.com/app/accounting/transactions/salesord.nl?id=" + ifRec.soid + "'>" + ifRec.so + "</a></td>";
-                        tbody += "<td>" + ifRec.customer + "</td>";
+                        tbody += "<td><input type='checkbox' name='if-check' value='" + ifRec.soid +  "-" + ifRec.lineId + "'></td>";
+                        tbody += "<td>" + ifRec.docNum + "</td>";
+                        tbody += "<td>" + ifRec.item + "</td>";
+                        tbody += "<td>" + ifRec.itemDes + "</td>";
+                        tbody += "<td>" + ifRec.expShipDate + "</td>";
+                        tbody += "<td>" + ifRec.qty + "</td>";
                         tbody += "<td>" + ifRec.location + "</td>";
-                        tbody += "<td>" + ifRec.brand + "</td>";
-                        tbody += "<td>" + ifRec.amount + "</td>";
-                        tbody += "<td>" + ifRec.shippingMethod + "</td>";
-                        tbody += "<td>" + ifRec.shippingZipTo + "</td>";
-                        tbody += "<td>" + ifRec.shippingState + "</td>";
-                        tbody += "<td>" + ifRec.shiptype + "</td>";
-                        tbody += "<td>" + ifRec.holdDate + "</td>";
+                        tbody += "<td><input type='text' name='fulfill-qty' value='" + ifRec.qty + "' style='width:50px;'></td>";
+                        tbody += "</tr>";
                     });
 
                     $(".if-list tbody").html(tbody);
                     DAPP.ifTable = $(".if-list").DataTable();
                 },
                 error: function() {
-                    alert("Error occured. Please contact with Ching Yi Lin");
+                    alert("Error occured.");
                     $(".ajax-loading").addClass("hide");
                 }
             });
         }
 
+        DAPP.exportPackList = function(so) {
+            $(".ajax-loading").removeClass("hide");
+            $.ajax({
+                url: DAPP.url,
+                method: "POST",
+                data: {"exportPackList": true, "so": JSON.stringify(so)},
+                xhrFields: { responseType: 'blob'},// IMPORTANT for binary response
+                success: function(blob, status, xhr) {
+                    $(".ajax-loading").addClass("hide");
+
+                    // Try to use filename from Content-Disposition
+                    var filename = "PickingTickets";
+                    var cd = xhr.getResponseHeader("Content-Disposition") || "";
+                    var match = cd.match(/filename="?([^"]+)"?/i);
+                    if (match && match[1]) filename = match[1];
+
+                    // Fallback based on content-type
+                    var ct = (xhr.getResponseHeader("Content-Type") || "").toLowerCase();
+                    if (!match) {
+                        if (ct.includes("pdf")) filename += ".pdf";
+                        else filename += ".zip";
+                    }
+
+                    // Trigger download
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                },
+                error: function(xhr) {
+                    $(".ajax-loading").addClass("hide");
+                    alert("Error occurred: " + (xhr.responseText || xhr.status));
+                }
+            });
+        }
+ 
         DAPP.createIFRecords = function(shipstatus, so, shipgroup) {
             $(".ajax-loading").removeClass("hide");
             var updateShipdate = $(".update-shipdate").val();
@@ -458,41 +490,13 @@
                     $(".close-modal").trigger("click");
                 },
                 error: function() {
-                    alert("Error occured. Please contact with Ching Yi Lin");
+                    alert("Error occured.");
                     $(".ajax-loading").addClass("hide");
                 }
             });
         }
 
-        DAPP.exportPackList = function(so) {
-            $(".ajax-loading").removeClass("hide");
-            $.ajax({
-                url: DAPP.url,
-                method: "POST",
-                data: {"exportPackList": true, "so": JSON.stringify(so)},
-                success: function(data) {
-                    $(".ajax-loading").addClass("hide");
-
-                    // var headers = {
-                    //     tranid: 'Document Number',
-                    //     item: "SKU",
-                    //     qty: "Quantity",
-                    //     memItem: "Member Item",
-                    //     memQty: "Member Quantity"
-                    // };
-                    var headers = {
-                        item: "SKU",
-                        qty: "Quantity"
-                    };
-                    DAPP.exportCSVFile(headers, JSON.parse(data), 'Pick List');
-                },
-                error: function() {
-                    alert("Error occured. Please contact with Ching Yi Lin");
-                    $(".ajax-loading").addClass("hide");
-                }
-            });
-        }
-        
+       
         DAPP.init();
     });
 
